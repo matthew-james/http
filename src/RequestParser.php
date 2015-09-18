@@ -87,7 +87,7 @@ class RequestParser extends EventEmitter
             $env['REQUEST_METHOD'],
             $env['REQUEST_URI'],
             $query,
-            $env['HTTP_VERSION'],
+            str_replace('HTTP/', $env['HTTP_VERSION'], $env['HTTP_VERSION']),
             $env,
             $env['REQUEST_BODY']
         );
