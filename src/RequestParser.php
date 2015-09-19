@@ -29,12 +29,7 @@ class RequestParser extends EventEmitter
     /**
      * @var int
      */
-    private $length = 0;
-
-    /**
-     * @var int
-     */
-    private $bytesParsed;
+    private $nRead = 0;
 
     /**
      * @var \HttpParser
@@ -52,15 +47,20 @@ class RequestParser extends EventEmitter
     public function feed($data)
     {
         $this->buffer .= $data;
-        $this->bytesParsed = $this->parser->execute($this->buffer, $this->bytesParsed);
+        $this->nRead = $this->parser->execute($this->buffer, $this->nRead);
 
         if ($this->parser->hasError()) {
-            $this->emit('error', array(new \RuntimeException("Server Error"), $this));
+            $this->emit('error', array(new \OverflowException('Maximum header size of 4096 exceeded.'), $this));
         }
 
         if ($this->parser->isFinished()) {
-            $this->prepareRequest();
-            $this->finishParsing();
+
+            if ($this->bodySent()) {
+                $this->prepareRequest();
+                $this->finishParsing();
+            }
+
+            $this->resetParser();
         }
     }
 
@@ -71,27 +71,44 @@ class RequestParser extends EventEmitter
     {
         $this->emit('headers', array($this->request, $this->request->getBody()));
         $this->removeAllListeners();
-        $this->request = null;
+        $this->resetParser();
     }
 
     protected function prepareRequest()
     {
         $env = $this->parser->getEnvironment();
-
-        // get query as array
-        $queryString = isset($env['QUERY_STRING']) ? $env['QUERY_STRING'] : '';
-        $query =[];
-        parse_str($queryString, $query);
+        $envParser = new EnvParser($env);
 
         $this->request = new Request(
-            $env['REQUEST_METHOD'],
-            $env['REQUEST_URI'],
-            $query,
-            str_replace('HTTP/', $env['HTTP_VERSION'], $env['HTTP_VERSION']),
-            $env,
-            $env['REQUEST_BODY']
+            $envParser->getMethod(),
+            $envParser->getUrl(),
+            $envParser->getQuery(),
+            $envParser->getProtocolVersion(),
+            $envParser->getHeaders(),
+            $envParser->getBody()
         );
 
-        return;
+        $this->request->setPost($envParser->getPost());
+    }
+
+    private function bodySent()
+    {
+        $env = $this->parser->getEnvironment();
+
+        if (!isset($env['HTTP_CONTENT_LENGTH'])) {
+            return true;
+        }
+
+        if (strlen($env['REQUEST_BODY']) >= $env['HTTP_CONTENT_LENGTH']) {
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function resetParser()
+    {
+        $this->nRead = 0;
+        $this->parser = new \HttpParser();
     }
 }
