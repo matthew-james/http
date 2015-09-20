@@ -96,7 +96,7 @@ class RequestParser extends EventEmitter
         $body = $this->getKey($headers, 'body', '');
         $contentLength = $this->getKey($headers, 'Content-Length');
 
-        if (strlen($body) >= $contentLength) {
+        if (strlen($body) >= (int) $contentLength) {
             return true;
         }
 
