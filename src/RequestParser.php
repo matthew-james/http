@@ -27,71 +27,24 @@ class RequestParser extends EventEmitter
     private $request;
 
     /**
-     * @var int
-     */
-    private $length = 0;
-
-    /**
      * @param $data
      */
     public function feed($data)
     {
         $this->buffer .= $data;
 
-        if (!$this->request && false !== strpos($this->buffer, "\r\n\r\n")) {
+        // @ todo prevent header overflow
 
-            // Extract the header from the buffer
-            // in case the content isn't complete
-            list($headers, $this->buffer) = explode("\r\n\r\n", $this->buffer, 2);
+        $parser = http_parser_init();
 
-            // Fail before parsing if the
-            if (strlen($headers) > $this->maxSize) {
-                $this->headerSizeExceeded();
-                return;
+        $result = [];
+        if (http_parser_execute($parser, $this->buffer, $result)) {
+
+            if ($this->bodySent($result)) {
+                $this->prepareRequest($result);
+                $this->finishParsing();
             }
-
-            $this->request = $this->parseHeaders($headers . "\r\n\r\n");
         }
-
-        // if there is a request (meaning the headers are parsed) and
-        // we have the right content size, we can finish the parsing
-        if ($this->request && $this->isRequestComplete()) {
-            $this->parseBody(substr($this->buffer, 0, $this->length));
-            $this->finishParsing();
-            return;
-        }
-
-        // fail if the header hasn't finished but it is already too large
-        if (!$this->request && strlen($this->buffer) > $this->maxSize) {
-            $this->headerSizeExceeded();
-            return;
-        }
-    }
-
-    /**
-     * @return bool
-     */
-    protected function isRequestComplete()
-    {
-        $headers = $this->request->getHeaders();
-
-        // if there is no content length, there should
-        // be no content so we can say it's done
-        if (!array_key_exists('Content-Length', $headers)) {
-            return true;
-        }
-
-        // if the content is present and has the
-        // right length, we're good to go
-        if (array_key_exists('Content-Length', $headers) && strlen($this->buffer) >= $headers['Content-Length']) {
-
-            // store the expected content length
-            $this->length = $this->request->getHeaders()['Content-Length'];
-
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -101,81 +54,91 @@ class RequestParser extends EventEmitter
     {
         $this->emit('headers', array($this->request, $this->request->getBody()));
         $this->removeAllListeners();
-        $this->request = null;
+        $this->buffer = '';
     }
 
-    /**
-     * @return null
-     */
+    protected function prepareRequest(array $env)
+    {
+        $headers = $this->getKey($env, 'headers', []);
+        $body = $this->getKey($headers, 'body', '');
+
+        if (isset($headers['body'])) {
+            unset($headers['body']);
+        }
+
+        if ($this->shouldParseBody($this->getKey($headers, 'Content-Type'))) {
+            $post = $this->parsePost($body);
+            $body = '';
+        } else {
+            $post = [];
+        }
+
+        $this->request = new Request(
+            $this->getKey($env, 'REQUEST_METHOD', 'GET'),
+            new gPsr\Uri($this->getKey($env, 'QUERY_STRING', '/')), // @ todo just manually build the URI
+            $this->parseQuery($this->getKey($env, 'query')),
+            '1.1',
+            $headers,
+            $body
+        );
+
+        $this->request->setPost($post);
+    }
+
     protected function headerSizeExceeded()
     {
         $this->emit('error', array(new \OverflowException("Maximum header size of {$this->maxSize} exceeded."), $this));
     }
 
-    /**
-     * @param  $data
-     * @return Request
-     */
-    public function parseHeaders($data)
+    private function bodySent($env)
     {
-        /** @var \GuzzleHttp\Psr7\Request $psrRequest */
-        $psrRequest = gPsr\parse_request($data);
+        $headers = $this->getKey($env, 'headers', []);
+        $body = $this->getKey($headers, 'body', '');
+        $contentLength = $this->getKey($headers, 'Content-Length');
 
-        $parsedQuery = [];
-        $queryString = $psrRequest->getUri()->getQuery();
-        if ($queryString) {
-            parse_str($queryString, $parsedQuery);
+        if (strlen($body) >= $contentLength) {
+            return true;
         }
 
-        $headers = array_map(function($val) {
-            if (1 === count($val)) {
-                $val = $val[0];
-            }
-
-            return $val;
-        }, $psrRequest->getHeaders());
-
-        return new Request(
-            $psrRequest->getMethod(),
-            $psrRequest->getUri(),
-            $parsedQuery,
-            $psrRequest->getProtocolVersion(),
-            $headers
-        );
+        return false;
     }
 
     /**
-     * @param  $content
-     * @return null
+     * @param array $src
+     * @param mixed $key
+     * @param mixed $default
+     * @return mixed
      */
-    public function parseBody($content)
+    protected function getKey(array $src, $key, $default = null)
     {
-        $headers = $this->request->getHeaders();
-
-        if (array_key_exists('Content-Type', $headers)) {
-            if (strpos($headers['Content-Type'], 'multipart/') === 0) {
-                //TODO :: parse the content while it is streaming
-                preg_match("/boundary=\"?(.*)\"?$/", $headers['Content-Type'], $matches);
-                $boundary = $matches[1];
-
-                $parser = new MultipartParser($content, $boundary);
-                $parser->parse();
-
-                $this->request->setPost($parser->getPost());
-                $this->request->setFiles($parser->getFiles());
-                return;
-            }
-
-            if (strtolower($headers['Content-Type']) == 'application/x-www-form-urlencoded') {
-                parse_str(urldecode($content), $result);
-                $this->request->setPost($result);
-
-                return;
-            }
+        if (isset($src[$key])) {
+            return $src[$key];
         }
 
+        return $default;
+    }
 
+    private function parseQuery($queryString)
+    {
+        if (is_null($queryString)) {
+            return [];
+        }
 
-        $this->request->setBody($content);
+        $parsed = [];
+        parse_str($queryString, $parsed);
+        return $parsed;
+    }
+
+    private function parsePost($body)
+    {
+        $body = trim($body);
+        $parsed = [];
+        parse_str(urldecode($body), $parsed);
+        return $parsed;
+    }
+
+    private function shouldParseBody($contentType)
+    {
+        return $contentType === 'application/x-www-form-urlencoded';
     }
 }
