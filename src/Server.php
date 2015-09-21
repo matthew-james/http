@@ -9,8 +9,15 @@ use React\Socket\ConnectionInterface;
 /** @event request */
 class Server extends EventEmitter implements ServerInterface
 {
+    /**
+     * @var SocketServerInterface
+     */
     private $io;
 
+    /**
+     * @param SocketServerInterface  $io
+     * @param RequestParserInterface $parser
+     */
     public function __construct(SocketServerInterface $io, RequestParserInterface $parser = null)
     {
         $this->io = $io;
@@ -45,6 +52,11 @@ class Server extends EventEmitter implements ServerInterface
         });
     }
 
+    /**
+     * @param ConnectionInterface $conn
+     * @param Request             $request
+     * @param                     $bodyBuffer
+     */
     public function handleRequest(ConnectionInterface $conn, Request $request, $bodyBuffer)
     {
         $response = new Response($conn);
