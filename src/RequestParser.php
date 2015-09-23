@@ -40,6 +40,8 @@ class RequestParser extends EventEmitter
         $result = [];
         if (http_parser_execute($parser, $this->buffer, $result)) {
 
+            var_dump($result);
+
             if ($this->bodySent($result)) {
                 $this->prepareRequest($result);
                 $this->finishParsing();
@@ -61,12 +63,13 @@ class RequestParser extends EventEmitter
     {
         $headers = $this->getKey($env, 'headers', []);
         $body = $this->getKey($headers, 'body', '');
+        $contentType = $this->getKey($headers, 'Content-Type');
 
         if (isset($headers['body'])) {
             unset($headers['body']);
         }
 
-        if ($this->shouldParseBody($this->getKey($headers, 'Content-Type'))) {
+        if ($this->shouldParseBody($contentType)) {
             $post = $this->parsePost($body);
             $body = '';
         } else {
@@ -81,6 +84,16 @@ class RequestParser extends EventEmitter
             $headers,
             $body
         );
+
+        if (strpos($contentType, 'multipart/') === 0) {
+            //TODO :: parse the content while it is streaming
+            preg_match("/boundary=\"?(.*)\"?$/", $headers['Content-Type'], $matches);
+            $boundary = $matches[1];
+            $parser = new MultipartParser($body, $boundary);
+            $parser->parse();
+            $post = $parser->getPost();
+            $this->request->setFiles($parser->getFiles());
+        }
 
         $this->request->setPost($post);
     }

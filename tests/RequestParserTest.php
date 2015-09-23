@@ -122,7 +122,6 @@ class RequestParserTest extends TestCase
 
     public function testShouldReceiveMultiPartBody()
     {
-        $this->markTestIncomplete('Not implemented yet');
 
         $request = null;
         $body = null;
