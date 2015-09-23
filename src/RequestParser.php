@@ -33,19 +33,21 @@ class RequestParser extends EventEmitter
     {
         $this->buffer .= $data;
 
-        // @ todo prevent header overflow
-
         $parser = http_parser_init();
 
         $result = [];
         if (http_parser_execute($parser, $this->buffer, $result)) {
 
-            var_dump($result);
-
             if ($this->bodySent($result)) {
                 $this->prepareRequest($result);
                 $this->finishParsing();
             }
+        }
+
+        // fail if the header hasn't finished but it is already too large
+        if (!$this->request && strlen($this->buffer) > $this->maxSize) {
+            $this->headerSizeExceeded();
+            return;
         }
     }
 
@@ -54,9 +56,14 @@ class RequestParser extends EventEmitter
      */
     protected function finishParsing()
     {
+        if (!$this->request) {
+            return;
+        }
+
         $this->emit('headers', array($this->request, $this->request->getBody()));
         $this->removeAllListeners();
         $this->buffer = '';
+        $this->request = null;
     }
 
     protected function prepareRequest(array $env)
@@ -64,6 +71,15 @@ class RequestParser extends EventEmitter
         $headers = $this->getKey($env, 'headers', []);
         $body = $this->getKey($headers, 'body', '');
         $contentType = $this->getKey($headers, 'Content-Type');
+
+        $headerLength = array_reduce($headers, function ($carry, $item) {
+           return $carry + strlen($item);
+        });
+
+        if ($headerLength > $this->maxSize) {
+            $this->headerSizeExceeded();
+            return;
+        }
 
         if (isset($headers['body'])) {
             unset($headers['body']);
@@ -85,6 +101,7 @@ class RequestParser extends EventEmitter
             $body
         );
 
+        // multipart
         if (strpos($contentType, 'multipart/') === 0) {
             //TODO :: parse the content while it is streaming
             preg_match("/boundary=\"?(.*)\"?$/", $headers['Content-Type'], $matches);

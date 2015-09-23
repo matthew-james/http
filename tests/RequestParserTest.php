@@ -164,10 +164,14 @@ class RequestParserTest extends TestCase
         );
     }
 
+    /**
+     * Running this in a separate process as the persisting state
+     * is causing the joyent parser to flip out
+     * and return a completely incorrect parsed request
+     * @runInSeparateProcess
+     */
     public function testHeaderOverflowShouldEmitError()
     {
-        $this->markTestIncomplete('Not implemented yet');
-
         $error = null;
 
         $parser = new RequestParser();
@@ -185,7 +189,6 @@ class RequestParserTest extends TestCase
 
     public function testOnePassHeaderTooLarge()
     {
-        $this->markTestIncomplete('Not implemented yet');
 
         $error = null;
 
@@ -207,7 +210,6 @@ class RequestParserTest extends TestCase
 
     public function testBodyShouldNotOverflowHeader()
     {
-        $this->markTestIncomplete('Not implemented yet');
         $error = null;
 
         $parser = new RequestParser();
