@@ -42,7 +42,9 @@ class RequestParser extends EventEmitter
         // if there is a request (meaning the headers are parsed) and
         // we have the right content size, we can finish the parsing
         if ($this->request && $this->isRequestComplete()) {
-            $this->parseBody(substr($this->buffer, 0, $this->length));
+            $content = substr($this->buffer, 0, $this->length);
+            $content = $content ?: '';
+            $this->parseBody($content);
             $this->finishParsing();
             return;
         }
@@ -107,21 +109,12 @@ class RequestParser extends EventEmitter
             return $val;
         }, $psrRequest->getHeaders());
 
-        // todo needs body
         return new ServerRequest(
             $psrRequest->getMethod(),
             $psrRequest->getUri(),
             $headers,
-            ''
+            null
         );
-
-//        return new Request(
-//            $psrRequest->getMethod(),
-//            $psrRequest->getUri(),
-//            $parsedQuery,
-//            $psrRequest->getProtocolVersion(),
-//            $headers
-//        );
     }
 
     public function parseBody($content)
@@ -150,6 +143,7 @@ class RequestParser extends EventEmitter
             }
         }
 
-        //$this->request->setBody($content);
+        // @ todo can only set a stream here
+//        $this->request->withBody();
     }
 }
