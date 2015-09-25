@@ -3,9 +3,10 @@
     "description": "Library for building an evented http server.",
     "keywords": ["http"],
     "license": "MIT",
+    "repositories": [{ "type": "vcs", "url": "git@github.com:matthew-james/psr7.git"}],
     "require": {
         "php": ">=5.4.0",
-        "guzzlehttp/psr7": "^1.0",
+        "guzzlehttp/psr7": "dev-server-request",
         "react/socket": "^0.4",
         "react/stream": "^0.4",
         "evenement/evenement": "^2.0"
