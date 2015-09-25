@@ -20,8 +20,9 @@ class Server extends EventEmitter implements ServerInterface
             // TODO: chunked transfer encoding (also for outgoing data)
 
             $parser = new RequestParser();
-            $parser->on('headers', function (Request $request, $bodyBuffer) use ($conn, $parser) {
+            $parser->on('headers', function (ServerRequest $request, $bodyBuffer) use ($conn, $parser) {
                 // attach remote ip to the request as metadata
+                // @todo can't do this with PSR7
                 $request->remoteAddress = $conn->getRemoteAddress();
 
                 $this->handleRequest($conn, $request, $bodyBuffer);
@@ -45,7 +46,7 @@ class Server extends EventEmitter implements ServerInterface
         });
     }
 
-    public function handleRequest(ConnectionInterface $conn, Request $request, $bodyBuffer)
+    public function handleRequest(ConnectionInterface $conn, ServerRequest $request, $bodyBuffer)
     {
         $response = new Response($conn);
         $response->on('close', array($request, 'close'));

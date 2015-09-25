@@ -15,7 +15,7 @@ class RequestParser extends EventEmitter
     private $maxSize = 4096;
 
     /**
-     * @var Request
+     * @var ServerRequest
      */
     private $request;
     private $length = 0;
@@ -107,13 +107,21 @@ class RequestParser extends EventEmitter
             return $val;
         }, $psrRequest->getHeaders());
 
-        return new Request(
+        // todo needs body
+        return new ServerRequest(
             $psrRequest->getMethod(),
             $psrRequest->getUri(),
-            $parsedQuery,
-            $psrRequest->getProtocolVersion(),
-            $headers
+            $headers,
+            ''
         );
+
+//        return new Request(
+//            $psrRequest->getMethod(),
+//            $psrRequest->getUri(),
+//            $parsedQuery,
+//            $psrRequest->getProtocolVersion(),
+//            $headers
+//        );
     }
 
     public function parseBody($content)
@@ -129,21 +137,19 @@ class RequestParser extends EventEmitter
                 $parser = new MultipartParser($content, $boundary);
                 $parser->parse();
 
-                $this->request->setPost($parser->getPost());
-                $this->request->setFiles($parser->getFiles());
+                $this->request->withParsedBody($parser->getPost());
+                $this->request->withUploadedFiles($parser->getFiles());
                 return;
             }
 
             if (strtolower($headers['Content-Type']) == 'application/x-www-form-urlencoded') {
                 parse_str(urldecode($content), $result);
-                $this->request->setPost($result);
+                $this->request->withParsedBody($result);
 
                 return;
             }
         }
 
-
-
-        $this->request->setBody($content);
+        //$this->request->setBody($content);
     }
 }
