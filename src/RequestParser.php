@@ -101,12 +101,14 @@ class RequestParser extends EventEmitter
             parse_str($queryString, $parsedQuery);
         }
 
-        return new ServerRequest(
+        $request = new ServerRequest(
             $psrRequest->getMethod(),
             $psrRequest->getUri(),
             $psrRequest->getHeaders(),
             null
         );
+
+        return $request->withQueryParams($parsedQuery);
     }
 
     public function parseBody($content)
