@@ -3,6 +3,7 @@
 namespace React\Tests\Http;
 
 use React\Http\RequestParser;
+use React\Http\ServerRequest;
 
 class RequestParserTest extends TestCase
 {
@@ -32,6 +33,7 @@ class RequestParserTest extends TestCase
 
     public function testHeadersEventShouldReturnRequestAndBodyBuffer()
     {
+        /** @var ServerRequest $request */
         $request = null;
         $bodyBuffer = null;
 
@@ -46,9 +48,9 @@ class RequestParserTest extends TestCase
 
         $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertSame('GET', $request->getMethod());
-        $this->assertSame('/', $request->getPath());
-        $this->assertSame(array(), $request->getQuery());
-        $this->assertSame('1.1', $request->getHttpVersion());
+        $this->assertSame('/', $request->getUri()->getPath());
+        $this->assertSame(array(), $request->getQueryParams());
+        $this->assertSame('1.1', $request->getProtocolVersion());
         $this->assertSame(
             array('Host' => 'example.com:80', 'Connection' => 'close', 'Content-Length' => '11'),
             $request->getHeaders()
@@ -74,6 +76,7 @@ class RequestParserTest extends TestCase
 
     public function testHeadersEventShouldParsePathAndQueryString()
     {
+        /** @var ServerRequest $request */
         $request = null;
 
         $parser = new RequestParser();
@@ -86,9 +89,9 @@ class RequestParserTest extends TestCase
 
         $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertSame('POST', $request->getMethod());
-        $this->assertSame('/foo', $request->getPath());
-        $this->assertSame(array('bar' => 'baz'), $request->getQuery());
-        $this->assertSame('1.1', $request->getHttpVersion());
+        $this->assertSame('/foo', $request->getUri()->getPath());
+        $this->assertSame(array('bar' => 'baz'), $request->getQueryParams());
+        $this->assertSame('1.1', $request->getProtocolVersion());
         $headers = array(
             'Host' => 'example.com:80',
             'User-Agent' => 'react/alpha',
@@ -101,6 +104,7 @@ class RequestParserTest extends TestCase
     {
         $content1 = "{\"test\":"; $content2 = " \"value\"}";
 
+        /** @var ServerRequest $request */
         $request = null;
         $body = null;
 
@@ -122,7 +126,7 @@ class RequestParserTest extends TestCase
 
     public function testShouldReceiveMultiPartBody()
     {
-
+        /** @var ServerRequest $request */
         $request = null;
         $body = null;
 
@@ -136,11 +140,11 @@ class RequestParserTest extends TestCase
 
         $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertEquals(
-            $request->getPost(),
+            $request->getParsedBody(),
             ['user' => 'single', 'user2' => 'second', 'users' => ['first in array', 'second in array']]
         );
-        $this->assertEquals(2, count($request->getFiles()));
-        $this->assertEquals(2, count($request->getFiles()['files']));
+        $this->assertEquals(2, count($request->getUploadedFiles()));
+        $this->assertEquals(2, count($request->getUploadedFiles()['files']));
     }
 
     public function testShouldReceivePostInBody()
