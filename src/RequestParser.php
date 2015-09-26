@@ -81,7 +81,7 @@ class RequestParser extends EventEmitter
 
     protected function finishParsing()
     {
-        $this->emit('headers', array($this->request, $this->request->getBody()));
+        $this->emit('headers', array($this->request, $this->buffer));
         $this->removeAllListeners();
         $this->request = null;
     }
@@ -122,20 +122,20 @@ class RequestParser extends EventEmitter
                 $parser = new MultipartParser($content, $boundary);
                 $parser->parse();
 
-                $this->request->withParsedBody($parser->getPost());
-                $this->request->withUploadedFiles($parser->getFiles());
+                $this->request = $this->request->withParsedBody($parser->getPost());
+                $this->request = $this->request->withUploadedFiles($parser->getFiles());
                 return;
             }
 
             if (strtolower($contentType) == 'application/x-www-form-urlencoded') {
                 parse_str(urldecode($content), $result);
-                $this->request->withParsedBody($result);
+                $this->request = $this->request->withParsedBody($result);
 
                 return;
             }
         }
 
         $stream = gPsr\stream_for($content);
-        $this->request->withBody($stream);
+        $this->request = $this->request->withBody($stream);
     }
 }
