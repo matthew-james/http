@@ -44,7 +44,7 @@ class RequestParserTest extends TestCase
         $data = $this->createGetRequest('RANDOM DATA', 11);
         $parser->feed($data);
 
-        $this->assertInstanceOf('React\Http\Request', $request);
+        $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertSame('GET', $request->getMethod());
         $this->assertSame('/', $request->getPath());
         $this->assertSame(array(), $request->getQuery());
@@ -84,7 +84,7 @@ class RequestParserTest extends TestCase
         $data = $this->createAdvancedPostRequest();
         $parser->feed($data);
 
-        $this->assertInstanceOf('React\Http\Request', $request);
+        $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertSame('POST', $request->getMethod());
         $this->assertSame('/foo', $request->getPath());
         $this->assertSame(array('bar' => 'baz'), $request->getQuery());
@@ -115,7 +115,7 @@ class RequestParserTest extends TestCase
         $parser->feed($content1);
         $parser->feed($content2 . "\r\n");
 
-        $this->assertInstanceOf('React\Http\Request', $request);
+        $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertEquals($content1 . $content2, $request->getBody());
         $this->assertSame($body, $request->getBody());
     }
@@ -134,7 +134,7 @@ class RequestParserTest extends TestCase
 
         $parser->feed($this->createMultipartRequest());
 
-        $this->assertInstanceOf('React\Http\Request', $request);
+        $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertEquals(
             $request->getPost(),
             ['user' => 'single', 'user2' => 'second', 'users' => ['first in array', 'second in array']]
@@ -156,7 +156,7 @@ class RequestParserTest extends TestCase
 
         $parser->feed($this->createPostWithContent());
 
-        $this->assertInstanceOf('React\Http\Request', $request);
+        $this->assertInstanceOf('React\Http\ServerRequest', $request);
         $this->assertSame('', $body);
         $this->assertEquals(
             $request->getPost(),
