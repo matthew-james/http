@@ -52,7 +52,7 @@ class RequestParserTest extends TestCase
         $this->assertSame(array(), $request->getQueryParams());
         $this->assertSame('1.1', $request->getProtocolVersion());
         $this->assertSame(
-            array('Host' => 'example.com:80', 'Connection' => 'close', 'Content-Length' => '11'),
+            array('Host' => array('example.com:80'), 'Connection' => array('close'), 'Content-Length' => array('11')),
             $request->getHeaders()
         );
 
