@@ -58,20 +58,20 @@ class RequestParser extends EventEmitter
 
     protected function isRequestComplete()
     {
-        $headers = $this->request->getHeaders();
+        $contentLength = $this->request->getHeaderLine('Content-Length');
 
         // if there is no content length, there should
         // be no content so we can say it's done
-        if (!array_key_exists('Content-Length', $headers)) {
+        if (!$contentLength) {
             return true;
         }
 
         // if the content is present and has the
         // right length, we're good to go
-        if (array_key_exists('Content-Length', $headers) && strlen($this->buffer) >= $headers['Content-Length']) {
+        if ($contentLength && strlen($this->buffer) >= $contentLength) {
 
             // store the expected content length
-            $this->length = $this->request->getHeaders()['Content-Length'];
+            $this->length = $contentLength;
 
             return true;
         }
@@ -101,30 +101,22 @@ class RequestParser extends EventEmitter
             parse_str($queryString, $parsedQuery);
         }
 
-        $headers = array_map(function($val) {
-            if (1 === count($val)) {
-                $val = $val[0];
-            }
-
-            return $val;
-        }, $psrRequest->getHeaders());
-
         return new ServerRequest(
             $psrRequest->getMethod(),
             $psrRequest->getUri(),
-            $headers,
+            $psrRequest->getHeaders(),
             null
         );
     }
 
     public function parseBody($content)
     {
-        $headers = $this->request->getHeaders();
+        $contentType = $this->request->getHeaderLine('Content-Type');
 
-        if (array_key_exists('Content-Type', $headers)) {
-            if (strpos($headers['Content-Type'], 'multipart/') === 0) {
+        if ($contentType) {
+            if (strpos($contentType, 'multipart/') === 0) {
                 //TODO :: parse the content while it is streaming
-                preg_match("/boundary=\"?(.*)\"?$/", $headers['Content-Type'], $matches);
+                preg_match("/boundary=\"?(.*)\"?$/", $contentType, $matches);
                 $boundary = $matches[1];
 
                 $parser = new MultipartParser($content, $boundary);
@@ -135,7 +127,7 @@ class RequestParser extends EventEmitter
                 return;
             }
 
-            if (strtolower($headers['Content-Type']) == 'application/x-www-form-urlencoded') {
+            if (strtolower($contentType) == 'application/x-www-form-urlencoded') {
                 parse_str(urldecode($content), $result);
                 $this->request->withParsedBody($result);
 
@@ -143,7 +135,7 @@ class RequestParser extends EventEmitter
             }
         }
 
-        // @ todo can only set a stream here
-//        $this->request->withBody();
+        $stream = gPsr\stream_for($content);
+        $this->request->withBody($stream);
     }
 }
