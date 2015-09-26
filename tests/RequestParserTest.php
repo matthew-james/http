@@ -56,7 +56,7 @@ class RequestParserTest extends TestCase
             $request->getHeaders()
         );
 
-        $this->assertSame('RANDOM DATA', $bodyBuffer);
+        $this->assertSame('RANDOM DATA', $bodyBuffer->getContents());
     }
 
     public function testHeadersEventShouldReturnBinaryBodyBuffer()
@@ -71,7 +71,7 @@ class RequestParserTest extends TestCase
         $data = $this->createGetRequest("\0x01\0x02\0x03\0x04\0x05", strlen("\0x01\0x02\0x03\0x04\0x05"));
         $parser->feed($data);
 
-        $this->assertSame("\0x01\0x02\0x03\0x04\0x05", $bodyBuffer);
+        $this->assertSame("\0x01\0x02\0x03\0x04\0x05", $bodyBuffer->getContents());
     }
 
     public function testHeadersEventShouldParsePathAndQueryString()
@@ -111,7 +111,7 @@ class RequestParserTest extends TestCase
         $parser = new RequestParser();
         $parser->on('headers', function ($parsedRequest, $parsedBodyBuffer) use (&$request, &$body) {
             $request = $parsedRequest;
-            $body = $parsedBodyBuffer;
+            $body = $parsedBodyBuffer->getContents();
         });
 
         $data = $this->createAdvancedPostRequest('', 17);
@@ -120,8 +120,8 @@ class RequestParserTest extends TestCase
         $parser->feed($content2 . "\r\n");
 
         $this->assertInstanceOf('React\Http\ServerRequest', $request);
-        $this->assertEquals($content1 . $content2, $request->getBody());
-        $this->assertSame($body, $request->getBody());
+        $this->assertEquals($content1 . $content2, $request->getBody()->__toString());
+        $this->assertSame($body, $request->getBody()->__toString());
     }
 
     public function testShouldReceiveMultiPartBody()
@@ -149,6 +149,7 @@ class RequestParserTest extends TestCase
 
     public function testShouldReceivePostInBody()
     {
+        /** @var ServerRequest $request */
         $request = null;
         $body = null;
 
@@ -161,10 +162,10 @@ class RequestParserTest extends TestCase
         $parser->feed($this->createPostWithContent());
 
         $this->assertInstanceOf('React\Http\ServerRequest', $request);
-        $this->assertSame('', $body);
+        $this->assertSame('', $body->getContents());
         $this->assertEquals(
-            $request->getPost(),
-            ['user' => 'single', 'user2' => 'second', 'users' => ['first in array', 'second in array']]
+            ['user' => 'single', 'user2' => 'second', 'users' => ['first in array', 'second in array']],
+            $request->getParsedBody()
         );
     }
 

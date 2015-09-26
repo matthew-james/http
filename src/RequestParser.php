@@ -81,7 +81,7 @@ class RequestParser extends EventEmitter
 
     protected function finishParsing()
     {
-        $this->emit('headers', array($this->request, $this->buffer));
+        $this->emit('headers', array($this->request, $this->request->getBody()));
         $this->removeAllListeners();
         $this->request = null;
     }
@@ -132,7 +132,6 @@ class RequestParser extends EventEmitter
             if (strtolower($contentType) == 'application/x-www-form-urlencoded') {
                 parse_str(urldecode($content), $result);
                 $this->request = $this->request->withParsedBody($result);
-
                 return;
             }
         }
