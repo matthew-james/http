@@ -22,8 +22,7 @@ class Server extends EventEmitter implements ServerInterface
             $parser = new RequestParser();
             $parser->on('headers', function (ServerRequest $request, $bodyBuffer) use ($conn, $parser) {
                 // attach remote ip to the request as metadata
-                // @todo can't do this with PSR7
-                //$request->remoteAddress = $conn->getRemoteAddress();
+                $request = $request->withAttribute('remote_address', $conn->getRemoteAddress());
 
                 $this->handleRequest($conn, $request, $bodyBuffer);
 

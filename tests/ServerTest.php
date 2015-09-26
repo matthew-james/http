@@ -22,7 +22,6 @@ class ServerTest extends TestCase
 
     public function testRequestEvent()
     {
-        $this->markTestIncomplete('Cannot set remote address yet');
         $io = new ServerStub();
 
         $i = 0;
@@ -35,7 +34,7 @@ class ServerTest extends TestCase
             $this->assertInstanceOf('React\Http\ServerRequest', $request);
             $this->assertSame('/', $request->getUri()->getPath());
             $this->assertSame('GET', $request->getMethod());
-            $this->assertSame('127.0.0.1', $request->getRemoteAddress());
+            $this->assertSame('127.0.0.1', $request->getAttribute('remote_address'));
 
             $this->assertInstanceOf('React\Http\Response', $response);
         });
