@@ -2,15 +2,15 @@
 
 namespace React\Tests\Http;
 
-use React\Http\Request;
+use React\Http\ServerRequest;
 
-class RequestTest extends TestCase
+class ServerRequestTest extends TestCase
 {
     /** @test */
     public function expectsContinueShouldBeFalseByDefault()
     {
         $headers = array();
-        $request = new Request('GET', '/', array(), '1.1', $headers);
+        $request = new ServerRequest('GET', '/', $headers);
 
         $this->assertFalse($request->expectsContinue());
     }
@@ -18,8 +18,8 @@ class RequestTest extends TestCase
     /** @test */
     public function expectsContinueShouldBeTrueIfContinueExpected()
     {
-        $headers = array('Expect' => '100-continue');
-        $request = new Request('GET', '/', array(), '1.1', $headers);
+        $headers = array('Expect' => array('100-continue'));
+        $request = new ServerRequest('GET', '/', $headers);
 
         $this->assertTrue($request->expectsContinue());
     }

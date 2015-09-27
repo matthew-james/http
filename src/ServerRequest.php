@@ -39,4 +39,9 @@ class ServerRequest extends \GuzzleHttp\Psr7\ServerRequest implements ReadableSt
 
         return $dest;
     }
+
+    public function expectsContinue()
+    {
+        return $this->getHeaderLine('Expect') && '100-continue' === $this->getHeaderLine('Expect');
+    }
 }
